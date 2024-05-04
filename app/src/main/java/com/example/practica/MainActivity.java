@@ -2,6 +2,8 @@ package com.example.practica;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -11,6 +13,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
+    private static final int REQUEST_CODE_DECEIT = 0;
     private static final String TAG = "QuestActivity";
     private static final String KEY_INDEX = "index";
     @Override
@@ -41,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
     public Button mTrueButton;
     public Button mFalseButton;
     private ImageButton mNextButton;
+    private Button mDeceitButton;
     private ImageButton mBackButton;
     private TextView mQuestionTextView;
     private Question[] mQuestionBank = new Question[] {
@@ -56,6 +60,7 @@ public class MainActivity extends AppCompatActivity {
             new Question(R.string.question_e, false),
     };
     private int mCurrentIndex = 0;
+    private boolean mIsDeceiter;
     private void updateQuestion() {
         int question = mQuestionBank[mCurrentIndex].getTextResId();
         mQuestionTextView.setText(question);
@@ -64,11 +69,14 @@ public class MainActivity extends AppCompatActivity {
         boolean answerIsTrue =
                 mQuestionBank[mCurrentIndex].isAnswerTrue();
         int messageResId = 0;
+        if (mIsDeceiter) {
+            messageResId = R.string.judgment_toast;
+        } else {
         if (userPressedTrue == answerIsTrue) {
             messageResId = R.string.correct_toast;
         } else {
             messageResId = R.string.incorrect_toast;
-        }
+        }}
         Toast.makeText(this, messageResId, Toast.LENGTH_SHORT).show();
     }
     @Override
@@ -103,6 +111,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 mCurrentIndex = (mCurrentIndex + 1) % mQuestionBank.length;
+                mIsDeceiter = false;
                 updateQuestion();
             }
         });
@@ -113,16 +122,41 @@ public class MainActivity extends AppCompatActivity {
                 updateQuestion();
             }
         });
+        mDeceitButton = (Button)findViewById(R.id.deceit_button);
+        mDeceitButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                boolean answerIsTrue = mQuestionBank[mCurrentIndex]
+                        .isAnswerTrue();
+                Intent i = DeceitActivity.newIntent(MainActivity.this,
+                        answerIsTrue);
+                startActivityForResult(i, REQUEST_CODE_DECEIT);
+            }
+        });
         if (savedInstanceState != null) {
             mCurrentIndex = savedInstanceState.getInt(KEY_INDEX, 0);
         }
         updateQuestion();
 
     }
+
     @Override
     public void onSaveInstanceState(Bundle savedInstanceState) {
         super.onSaveInstanceState(savedInstanceState);
         Log.i(TAG, "onSaveInstanceState");
         savedInstanceState.putInt(KEY_INDEX, mCurrentIndex);
+    }
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode,
+                                    Intent data) {
+        if (resultCode != Activity.RESULT_OK) {
+            return;
+        }
+        if (requestCode == REQUEST_CODE_DECEIT) {
+            if (data == null) {
+                return;
+            }
+            mIsDeceiter = DeceitActivity.wasAnswerShown(data);
+        }
     }
 }
